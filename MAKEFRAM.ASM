@@ -11,6 +11,26 @@ Start:	mov ax, 0b800h
 	mov sp, 1d	;weight
 	mov dh, 07eh	;color atr
 	
+	call DrawFrame
+	
+	mov ax, 4c00h
+	int 21h
+
+;------------------------------------------
+;DrawFrame
+;------------------------------------------
+;Expects: es->videomemory
+;
+;Entry: bx - offset in vmem
+;		dp - height of frame
+;		sp - weight of fram
+;		dh - color atr
+;
+;Destroys: bx, di, si, dx,
+;------------------------------------------
+
+DrawFrame	proc
+
 	xor di, di	;y offset
 	xor si, si	;x offset
 	
@@ -69,9 +89,9 @@ Start:	mov ax, 0b800h
 		sub bx, 160d
 		cmp di, 0
 		ja next_left
-	
-	mov ax, 4c00h
-	int 21h
+
+	ret
+	endp
 
 .data 
 frame db 0c9h, 0bbh, 0c8h, 0bch, 0cdh, 0bah

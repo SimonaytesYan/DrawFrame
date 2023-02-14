@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/15/23 01:24:29	    Page 1
+Turbo Assembler	 Version 4.1	    02/15/23 02:08:56	    Page 1
 makefram.asm
 
 
@@ -16,80 +16,100 @@ makefram.asm
      11	010D  BC 0001			     mov sp, 1d	     ;weight
      12	0110  B6 7E			     mov dh, 07eh    ;color atr
      13
-     14	0112  33 FF			     xor di, di	     ;y	offset
-     15	0114  33 F6			     xor si, si	     ;x	offset
-     16
-     17	0116  8A 16 0000r		     mov dl, frame		;left upper corner
-     18	011A  26: 89 17			     mov word ptr es:[bx], dx
-     19	011D  83 C3 02			     add bx, 2
-     20
-     21	0120  8A 16 0004r		     mov dl, frame[4]	     ;horisontal border
-     22
-     23	0124				     next_top:				     ;draw top
-     24	0124  26: 89 17				     mov word ptr es:[bx], dx
-     25
-     26	0127  46				     inc si
-     27	0128  83 C3 02				     add bx, 2
-     28	012B  3B F4				     cmp si, sp
-     29	012D  7C F5				     jl	next_top
-     30
-     31	012F  8A 16 0001r		     mov dl, frame[1]		     ;right top	corner
-     32	0133  26: 89 17			     mov word ptr es:[bx], dx
+     14	0112  E8 0005			     call DrawFrame
+     15
+     16	0115  B8 4C00			     mov ax, 4c00h
+     17	0118  CD 21			     int 21h
+     18
+     19				     ;------------------------------------------
+     20				     ;DrawFrame
+     21				     ;------------------------------------------
+     22				     ;Expects: es->videomemory
+     23				     ;
+     24				     ;Entry: bx	- offset in vmem
+     25				     ;		     dp	- height of frame
+     26				     ;		     sp	- weight of fram
+     27				     ;		     dh	- color	atr
+     28				     ;
+     29				     ;Destroys:	bx, di,	si, dx,
+     30				     ;------------------------------------------
+     31
+     32	011A			     DrawFrame	     proc
      33
-     34	0136  81 C3 00A0		     add bx, 160d		     ;new line
-     35	013A  8A 16 0005r		     mov dl, frame[5]		     ;vertical border
+     34	011A  33 FF			     xor di, di	     ;y	offset
+     35	011C  33 F6			     xor si, si	     ;x	offset
      36
-     37	013E				     next_right:		     ;draw right
-     38	013E  26: 89 17				     mov word ptr es:[bx], dx
-     39
-     40	0141  47				     inc di
-     41	0142  81 C3 00A0			     add bx, 160d
-     42	0146  3B FD				     cmp di, bp
-     43	0148  7C F4				     jl	next_right
-     44
-     45	014A  8A 16 0003r		     mov dl, frame[3]		     ;right bottom corner
-     46	014E  26: 89 17			     mov word ptr es:[bx], dx
-     47	0151  83 EB 02			     sub bx, 2d
-     48
-     49	0154  8A 16 0004r		     mov dl, frame[4]
+     37	011E  8A 16 0000r		     mov dl, frame		;left upper corner
+     38	0122  26: 89 17			     mov word ptr es:[bx], dx
+     39	0125  83 C3 02			     add bx, 2
+     40
+     41	0128  8A 16 0004r		     mov dl, frame[4]	     ;horisontal border
+     42
+     43	012C				     next_top:				     ;draw top
+     44	012C  26: 89 17				     mov word ptr es:[bx], dx
+     45
+     46	012F  46				     inc si
+     47	0130  83 C3 02				     add bx, 2
+     48	0133  3B F4				     cmp si, sp
+     49	0135  7C F5				     jl	next_top
      50
-     51	0158				     next_bottom:		     ;draw bottom
-     52	0158  26: 89 17				     mov word ptr es:[bx], dx
+     51	0137  8A 16 0001r		     mov dl, frame[1]		     ;right top	corner
+     52	013B  26: 89 17			     mov word ptr es:[bx], dx
      53
-     54	015B  4E				     dec si
-     55	015C  83 EB 02				     sub bx, 2d
-     56	015F  83 FE 00				     cmp si, 0
-     57	0162  77 F4				     ja	next_bottom
-Turbo Assembler	 Version 4.1	    02/15/23 01:24:29	    Page 2
+     54	013E  81 C3 00A0		     add bx, 160d		     ;new line
+     55	0142  8A 16 0005r		     mov dl, frame[5]		     ;vertical border
+     56
+     57	0146				     next_right:		     ;draw right
+Turbo Assembler	 Version 4.1	    02/15/23 02:08:56	    Page 2
 makefram.asm
 
 
 
-     58
-     59	0164  8A 16 0002r		     mov dl, frame[2]		     ;left bottom corner
-     60	0168  26: 89 17			     mov word ptr es:[bx], dx
-     61	016B  81 EB 00A0		     sub bx, 160d
-     62
-     63	016F  8A 16 0005r		     mov dl, frame[5]		     ;vertical border
+     58	0146  26: 89 17				     mov word ptr es:[bx], dx
+     59
+     60	0149  47				     inc di
+     61	014A  81 C3 00A0			     add bx, 160d
+     62	014E  3B FD				     cmp di, bp
+     63	0150  7C F4				     jl	next_right
      64
-     65	0173				     next_left:				     ;draw left
-     66	0173  26: 89 17				     mov word ptr es:[bx], dx
-     67
-     68	0176  4F				     dec di
-     69	0177  81 EB 00A0			     sub bx, 160d
-     70	017B  83 FF 00				     cmp di, 0
-     71	017E  77 F3				     ja	next_left
-     72
-     73	0180  B8 4C00			     mov ax, 4c00h
-     74	0183  CD 21			     int 21h
-     75
-     76	0185			     .data
-     77	0000  C9 BB C8 BC CD BA	     frame db 0c9h, 0bbh, 0c8h,	0bch, 0cdh, 0bah
-     78				     ;	   _ _	 |_   _|  =   ||
-     79				     ;	  |   |
-     80
-     81				     end Start
-Turbo Assembler	 Version 4.1	    02/15/23 01:24:29	    Page 3
+     65	0152  8A 16 0003r		     mov dl, frame[3]		     ;right bottom corner
+     66	0156  26: 89 17			     mov word ptr es:[bx], dx
+     67	0159  83 EB 02			     sub bx, 2d
+     68
+     69	015C  8A 16 0004r		     mov dl, frame[4]
+     70
+     71	0160				     next_bottom:		     ;draw bottom
+     72	0160  26: 89 17				     mov word ptr es:[bx], dx
+     73
+     74	0163  4E				     dec si
+     75	0164  83 EB 02				     sub bx, 2d
+     76	0167  83 FE 00				     cmp si, 0
+     77	016A  77 F4				     ja	next_bottom
+     78
+     79	016C  8A 16 0002r		     mov dl, frame[2]		     ;left bottom corner
+     80	0170  26: 89 17			     mov word ptr es:[bx], dx
+     81	0173  81 EB 00A0		     sub bx, 160d
+     82
+     83	0177  8A 16 0005r		     mov dl, frame[5]		     ;vertical border
+     84
+     85	017B				     next_left:				     ;draw left
+     86	017B  26: 89 17				     mov word ptr es:[bx], dx
+     87
+     88	017E  4F				     dec di
+     89	017F  81 EB 00A0			     sub bx, 160d
+     90	0183  83 FF 00				     cmp di, 0
+     91	0186  77 F3				     ja	next_left
+     92
+     93	0188  C3			     ret
+     94	0189				     endp
+     95
+     96	0189			     .data
+     97	0000  C9 BB C8 BC CD BA	     frame db 0c9h, 0bbh, 0c8h,	0bch, 0cdh, 0bah
+     98				     ;	   _ _	 |_   _|  =   ||
+     99				     ;	  |   |
+    100
+    101				     end Start
+Turbo Assembler	 Version 4.1	    02/15/23 02:08:56	    Page 3
 Symbol Table
 
 
@@ -99,7 +119,7 @@ Symbol Name			  Type	 Value
 
 ??DATE				  Text	 "02/15/23"
 ??FILENAME			  Text	 "makefram"
-??TIME				  Text	 "01:24:29"
+??TIME				  Text	 "02:08:56"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @CODE				  Text	 DGROUP
@@ -113,16 +133,17 @@ Symbol Name			  Type	 Value
 @MODEL				  Text	 1
 @STACK				  Text	 DGROUP
 @WORDSIZE			  Text	 2
+DRAWFRAME			  Near	 DGROUP:011A
 FRAME				  Byte	 DGROUP:0000
-NEXT_BOTTOM			  Near	 DGROUP:0158
-NEXT_LEFT			  Near	 DGROUP:0173
-NEXT_RIGHT			  Near	 DGROUP:013E
-NEXT_TOP			  Near	 DGROUP:0124
+NEXT_BOTTOM			  Near	 DGROUP:0160
+NEXT_LEFT			  Near	 DGROUP:017B
+NEXT_RIGHT			  Near	 DGROUP:0146
+NEXT_TOP			  Near	 DGROUP:012C
 START				  Near	 DGROUP:0100
 
 Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
   _DATA				  16  0006 Word	  Public  DATA
-  _TEXT				  16  0185 Word	  Public  CODE
+  _TEXT				  16  0189 Word	  Public  CODE
 
