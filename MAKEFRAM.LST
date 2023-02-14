@@ -1,0 +1,128 @@
+Turbo Assembler	 Version 4.1	    02/15/23 01:24:29	    Page 1
+makefram.asm
+
+
+
+      1	0000			     .model tiny
+      2	0000			     .code
+      3				     org 100h
+      4
+      5	0100  B8 B800		     Start:  mov ax, 0b800h
+      6	0103  8E C0			     mov es, ax
+      7
+      8	0105  33 DB			     xor bx, bx	     ;bx - offset
+      9	0107  BB 02D0			     mov bx, 160d*4d + 80d
+     10	010A  BD 0005			     mov bp, 5d	     ;height
+     11	010D  BC 0001			     mov sp, 1d	     ;weight
+     12	0110  B6 7E			     mov dh, 07eh    ;color atr
+     13
+     14	0112  33 FF			     xor di, di	     ;y	offset
+     15	0114  33 F6			     xor si, si	     ;x	offset
+     16
+     17	0116  8A 16 0000r		     mov dl, frame		;left upper corner
+     18	011A  26: 89 17			     mov word ptr es:[bx], dx
+     19	011D  83 C3 02			     add bx, 2
+     20
+     21	0120  8A 16 0004r		     mov dl, frame[4]	     ;horisontal border
+     22
+     23	0124				     next_top:				     ;draw top
+     24	0124  26: 89 17				     mov word ptr es:[bx], dx
+     25
+     26	0127  46				     inc si
+     27	0128  83 C3 02				     add bx, 2
+     28	012B  3B F4				     cmp si, sp
+     29	012D  7C F5				     jl	next_top
+     30
+     31	012F  8A 16 0001r		     mov dl, frame[1]		     ;right top	corner
+     32	0133  26: 89 17			     mov word ptr es:[bx], dx
+     33
+     34	0136  81 C3 00A0		     add bx, 160d		     ;new line
+     35	013A  8A 16 0005r		     mov dl, frame[5]		     ;vertical border
+     36
+     37	013E				     next_right:		     ;draw right
+     38	013E  26: 89 17				     mov word ptr es:[bx], dx
+     39
+     40	0141  47				     inc di
+     41	0142  81 C3 00A0			     add bx, 160d
+     42	0146  3B FD				     cmp di, bp
+     43	0148  7C F4				     jl	next_right
+     44
+     45	014A  8A 16 0003r		     mov dl, frame[3]		     ;right bottom corner
+     46	014E  26: 89 17			     mov word ptr es:[bx], dx
+     47	0151  83 EB 02			     sub bx, 2d
+     48
+     49	0154  8A 16 0004r		     mov dl, frame[4]
+     50
+     51	0158				     next_bottom:		     ;draw bottom
+     52	0158  26: 89 17				     mov word ptr es:[bx], dx
+     53
+     54	015B  4E				     dec si
+     55	015C  83 EB 02				     sub bx, 2d
+     56	015F  83 FE 00				     cmp si, 0
+     57	0162  77 F4				     ja	next_bottom
+Turbo Assembler	 Version 4.1	    02/15/23 01:24:29	    Page 2
+makefram.asm
+
+
+
+     58
+     59	0164  8A 16 0002r		     mov dl, frame[2]		     ;left bottom corner
+     60	0168  26: 89 17			     mov word ptr es:[bx], dx
+     61	016B  81 EB 00A0		     sub bx, 160d
+     62
+     63	016F  8A 16 0005r		     mov dl, frame[5]		     ;vertical border
+     64
+     65	0173				     next_left:				     ;draw left
+     66	0173  26: 89 17				     mov word ptr es:[bx], dx
+     67
+     68	0176  4F				     dec di
+     69	0177  81 EB 00A0			     sub bx, 160d
+     70	017B  83 FF 00				     cmp di, 0
+     71	017E  77 F3				     ja	next_left
+     72
+     73	0180  B8 4C00			     mov ax, 4c00h
+     74	0183  CD 21			     int 21h
+     75
+     76	0185			     .data
+     77	0000  C9 BB C8 BC CD BA	     frame db 0c9h, 0bbh, 0c8h,	0bch, 0cdh, 0bah
+     78				     ;	   _ _	 |_   _|  =   ||
+     79				     ;	  |   |
+     80
+     81				     end Start
+Turbo Assembler	 Version 4.1	    02/15/23 01:24:29	    Page 3
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/15/23"
+??FILENAME			  Text	 "makefram"
+??TIME				  Text	 "01:24:29"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0101H
+@CURSEG				  Text	 _DATA
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 MAKEFRAM
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+FRAME				  Byte	 DGROUP:0000
+NEXT_BOTTOM			  Near	 DGROUP:0158
+NEXT_LEFT			  Near	 DGROUP:0173
+NEXT_RIGHT			  Near	 DGROUP:013E
+NEXT_TOP			  Near	 DGROUP:0124
+START				  Near	 DGROUP:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0006 Word	  Public  DATA
+  _TEXT				  16  0185 Word	  Public  CODE
+
