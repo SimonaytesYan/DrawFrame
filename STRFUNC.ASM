@@ -11,17 +11,21 @@ locals __
 ;
 ;OUTPUT:    ax - length of string
 ;
-;DESTROYS:  df, si
+;DESTROYS:  si, ax, di
 ;-------------------------------------
 StrLen  proc
     cld             ;move forward along the string    
     mov ax, 0d      ;ax = '\0'
     mov si, di      ;save old value of di
 
-    repne scasb     ;while(es:[di] != ax) di++;
+    dec di
+    __next:
+        inc di
+        cmp byte ptr es:[di], al
+        jne __Next
+
     mov ax, di
     sub ax, si      ;ax = di - si
-    dec ax
 
     ret
         endp

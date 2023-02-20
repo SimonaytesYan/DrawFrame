@@ -26,7 +26,7 @@ Start:
     je snd_type                            ;  |
                                            ;  |
     user_type:  mov di, si                 ;  |
-                add si, 10d     ;skip symls   |
+                add si, 10d     ;skip symbls  |
                 jmp skip                   ;  |put in di addres of array symbols for frame
                                            ;  |
     fst_type:   lea di, single_frame       ;  |
@@ -38,33 +38,38 @@ skip:
 
     inc si                  ;skip first "
     push si                 ;save start of label to ouput
+    dec si
     __skip_text:
-        cmp [si], '"'
         inc si
+        cmp byte ptr [si], "'"
         jne __skip_text
-    dec si              ;si -> last "
-    mov byte ptr [si], 0;replace last " to '\0'
+    mov byte ptr [si], 0    ;replace last " to '\0'
+
+    add si, 2
 
     call GetHexNumFromMem   ;get color atr
     mov cx, ax      ;save color atribute in cx
-    
-    pop cx          ;in cx - start of label to ouput
 
     mov si, di      ;put in si addres of array symbols for frame
+    pop di          ;save pointer to text
 
     pop dx          ;
     shl dx, 8       ;dh - height of frame
     pop ax          ;dl - weight of frame
     add dx, ax
 
-    pop bp          ;put y in bp
+    pop bp          ;put x in bp
 
-    mov di, 160d
-    pop ax          ;put x in ax
+    pop ax          ;put y in ax
 
-    push dx         ;<-------------
-    mul di          ;             |save dx
-    pop dx          ;<-------------
+    push dx         ;<------------|
+    push di         ;<--|         |
+                    ;   |         |
+    mov di, 160d    ;   |save di  |
+    mul di          ;   |         |save dx
+                    ;   |         |
+    pop di          ;<--|         |
+    pop dx          ;<------------|
 
     add bp, ax      ;make from x and y arguments memory offset in bp
 
@@ -72,11 +77,48 @@ skip:
     shl ax, 8
     
     push bp
+    push di
+    push dx
     call DrawFrame
 
-    pop bp
-    call PutStr
+    pop dx          ;size of frame
+    pop di          ;pointer to text
 
+    push cs
+    pop es          ;set es to this segment
+    push ax
+    push di
+    call StrLen     ;in ax - length of string
+    pop si          ;pointer to text
+
+    pop cx          ;color atr in ch
+    xor cl, cl
+    pop bx          ;pointer to left up corner of the frame
+
+    mov bp, ax      ;save str length to bp
+
+    shr dh, 1       ;height/=2
+    mov ax, 160d    ;
+    mul dh
+
+    add bx, ax      ;set bx right y coord to write text
+
+    xor dh, dh      ;dx = dl
+
+    mov ax, bp      ;ax = length
+    shr ax, 1       ;ax/=2
+    shl ax, 1
+
+    shr dx, 1       ;weight/=2
+    shl dx, 1
+
+    add bx, dx
+    sub bx, ax      ;set bx right x coord to write text
+
+    mov ax, 0b800h
+    mov es, ax      ;es -> videomem
+
+    call OutputStr
     ret
 ;-------------------------------------------
 ;GetDecimalNumberFromMemory
@@ -170,7 +212,7 @@ GetHexNumFromMem   proc
 ;           8:[right down corner]
 ;
 ;OUTPUTS:   None
-;DESTROYS:  bx, cx, di, bp, al
+;DESTROYS:  bx, cx, di, bp, al, dx
 ;--------------------------------
 DrawFrame   proc
     sub dl, 2           ;now we don`t consider the 1-st and the last symbol, because them we will put without loops
@@ -285,5 +327,7 @@ OutputStr	proc
 	ret
 	endp
 ;------------------------------------------------
+
+include STRFUNC.ASM
 
 end Start

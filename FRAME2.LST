@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/20/23 01:16:28	    Page 1
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 1
 frame2.asm
 
 
@@ -17,12 +17,12 @@ frame2.asm
      12								     ;<----------------------|
      13	0108  B9 0004			 mov cx, 4		     ;number of	number arg   |
      14	010B				 __next:		     ;			     |
-     15	010B  E8 0062			     call GetDecNumFromMem   ;get argument	     | Get arguments from cml
+     15	010B  E8 00A8			     call GetDecNumFromMem   ;get argument	     | Get arguments from cml
      16	010E  50			     push ax		     ;			     |
      17	010F  46			     inc si		     ;			     |
      18	0110  E2 F9			     loop __next	     ;<----------------------|
      19
-     20	0112  E8 005B			 call GetDecNumFromMem	 ;get frame type
+     20	0112  E8 00A1			 call GetDecNumFromMem	 ;get frame type
      21	0115  46			 inc si
      22
      23	0116  3D 0001			 cmp ax, 1   ;frame type in ax now	;<-|
@@ -31,7 +31,7 @@ frame2.asm
      26	011E  74 0E			 je snd_type				;  |
      27										;  |
      28	0120  8B FE			 user_type:  mov di, si			;  |
-     29	0122  83 C6 0A				     add si, 10d     ;skip symls    |
+     29	0122  83 C6 0A				     add si, 10d     ;skip symbls  |
      30	0125  EB 0D 90				     jmp skip			;  |put	in di addres of	array symbols for frame
      31										;  |
      32	0128  BF 0000r			 fst_type:   lea di, single_frame	;  |
@@ -41,239 +41,504 @@ frame2.asm
      36	0131  EB 01 90				     jmp skip			;<-|
      37	0134			     skip:
      38
-     39	0134  E8 0055			 call GetHexNumFromMem
-     40	0137  8B C8			 mov cx, ax	 ;save color atribute in cx
-     41
-     42	0139  8B F7			 mov si, di	 ;put in si addres of array symbols for	frame
-     43
-     44	013B  5A			 pop dx		 ;
-     45	013C  D1 E2 D1 E2 D1 E2	D1+	 shl dx, 8	 ;dh - height of frame
-     46	      E2 D1 E2 D1 E2 D1	E2+
-     47	      D1 E2
-     48	014C  58			 pop ax		 ;dl - weight of frame
-     49	014D  03 D0			 add dx, ax
-     50
-     51	014F  5D			 pop bp		 ;put y	in bp
+     39	0134  46			 inc si			 ;skip first "
+     40	0135  56			 push si		 ;save start of	label to ouput
+     41	0136  4E			 dec si
+     42	0137				 __skip_text:
+     43	0137  46			     inc si
+     44	0138  80 3C 27			     cmp byte ptr [si],	"'"
+     45	013B  75 FA			     jne __skip_text
+     46	013D  C6 04 00			 mov byte ptr [si], 0	 ;replace last " to '\0'
+     47
+     48	0140  83 C6 02			 add si, 2
+     49
+     50	0143  E8 008C			 call GetHexNumFromMem	 ;get color atr
+     51	0146  8B C8			 mov cx, ax	 ;save color atribute in cx
      52
-     53	0150  BF 00A0			 mov di, 160d
-     54	0153  58			 pop ax		 ;put x	in ax
+     53	0148  8B F7			 mov si, di	 ;put in si addres of array symbols for	frame
+     54	014A  5F			 pop di		 ;save pointer to text
      55
-     56	0154  52			 push dx	 ;<-------------
-     57	0155  F7 E7			 mul di		 ;	       |save dx
-Turbo Assembler	 Version 4.1	    02/20/23 01:16:28	    Page 2
+     56	014B  5A			 pop dx		 ;
+     57	014C  D1 E2 D1 E2 D1 E2	D1+	 shl dx, 8	 ;dh - height of frame
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 2
 frame2.asm
 
 
 
-     58	0157  5A			 pop dx		 ;<-------------
-     59
-     60	0158  03 E8			 add bp, ax	 ;make from x and y arguments memory offset in bp
-     61
-     62	015A  8B C1			 mov ax, cx	 ;put color atribute to	ax
-     63	015C  D1 E0 D1 E0 D1 E0	D1+	 shl ax, 8
-     64	      E0 D1 E0 D1 E0 D1	E0+
-     65	      D1 E0
+     58	      E2 D1 E2 D1 E2 D1	E2+
+     59	      D1 E2
+     60	015C  58			 pop ax		 ;dl - weight of frame
+     61	015D  03 D0			 add dx, ax
+     62
+     63	015F  5D			 pop bp		 ;put x	in bp
+     64
+     65	0160  58			 pop ax		 ;put y	in ax
      66
-     67	016C  E8 0044			 call DrawFrame
-     68
-     69	016F  C3			 ret
-     70				     ;-------------------------------------------
-     71				     ;GetDecimalNumberFromMemory
-     72				     ;-------------------------------------------
-     73				     ;EXPECTS:	 None
-     74				     ;INPUTS:	     si	- pointer to place in memory which from	number will be taken
-     75				     ;
-     76				     ;OUTPUTS:	     ax	- number
-     77				     ;		 si - pointer to byte after end	of number
-     78				     ;
-     79				     ;DESTROYS:	     dx, di
-     80				     ;
-     81				     ;-------------------------------------------
-     82	0170			     GetDecNumFromMem	proc
-     83	0170  33 C0			 xor ax, ax
-     84	0172  33 D2			 xor dx, dx
-     85	0174  BF 000A			     mov di, 10d
-     86
-     87	0177				     __next:
-     88	0177  80 3C 0D			     cmp byte ptr [si],	13d
-     89	017A  74 0F			     je	__break
+     67	0161  52			 push dx	 ;<------------|
+     68	0162  57			 push di	 ;<--|	       |
+     69							 ;   |	       |
+     70	0163  BF 00A0			 mov di, 160d	 ;   |save di  |
+     71	0166  F7 E7			 mul di		 ;   |	       |save dx
+     72							 ;   |	       |
+     73	0168  5F			 pop di		 ;<--|	       |
+     74	0169  5A			 pop dx		 ;<------------|
+     75
+     76	016A  03 E8			 add bp, ax	 ;make from x and y arguments memory offset in bp
+     77
+     78	016C  8B C1			 mov ax, cx	 ;put color atribute to	ax
+     79	016E  D1 E0 D1 E0 D1 E0	D1+	 shl ax, 8
+     80	      E0 D1 E0 D1 E0 D1	E0+
+     81	      D1 E0
+     82
+     83	017E  55			 push bp
+     84	017F  57			 push di
+     85	0180  52			 push dx
+     86	0181  E8 0075			 call DrawFrame
+     87
+     88	0184  5A			 pop dx		 ;size of frame
+     89	0185  5F			 pop di		 ;pointer to text
      90
-     91	017C  F7 E7			     mul di		 ;ax = ax*10
-     92	017E  8A 14				     mov dl, [si]	 ;put in dl next simbol
-     93	0180  80 EA 30				     sub dl, '0'		     ;convert simbol to	number
-     94
-     95	0183  03 C2				     add ax, dx			 ;ax +=	dh
-     96
-     97	0185  46				     inc si
-     98	0186  80 3C 20			     cmp byte ptr [si],	' '
-     99	0189  75 EC				     jne __next		 ;while(*si != ' ')
-    100	018B				 __break:
+     91	0186  0E			 push cs
+     92	0187  07			 pop es		 ;set es to this segment
+     93	0188  50			 push ax
+     94	0189  57			 push di
+     95	018A  E8 00D1			 call StrLen	 ;in ax	- length of string
+     96	018D  5E			 pop si		 ;pointer to text
+     97
+     98	018E  59			 pop cx		 ;color	atr in ch
+     99	018F  32 C9			 xor cl, cl
+    100	0191  5B			 pop bx		 ;pointer to left up corner of the frame
     101
-    102	018B  C3			 ret
-    103	018C					     endp
-    104
-    105				     ;-------------------------------------------
-    106				     ;GetHexNumberFromMemory
-    107				     ;-------------------------------------------
-    108				     ;EXPECTS:	 None
-    109				     ;INPUTS:	     si	- pointer to place in memory which from	number will be taken
-    110				     ;
-    111				     ;OUTPUTS:	     ax	- number
-    112				     ;		 si - pointer to byte after end	of number
-    113				     ;
-    114				     ;DESTROYS:	     dx
-Turbo Assembler	 Version 4.1	    02/20/23 01:16:28	    Page 3
+    102	0192  8B E8			 mov bp, ax	 ;save str length to bp
+    103
+    104	0194  D0 EE			 shr dh, 1	 ;height/=2
+    105	0196  B8 00A0			 mov ax, 160d	 ;
+    106	0199  F6 E6			 mul dh
+    107
+    108	019B  03 D8			 add bx, ax	 ;set bx right y coord to write	text
+    109
+    110	019D  32 F6			 xor dh, dh	 ;dx = dl
+    111
+    112	019F  8B C5			 mov ax, bp	 ;ax = length
+    113	01A1  D1 E8			 shr ax, 1	 ;ax/=2
+    114	01A3  D1 E0			 shl ax, 1
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 3
 frame2.asm
 
 
 
-    115				     ;
-    116				     ;-------------------------------------------
-    117	018C			     GetHexNumFromMem	proc
-    118	018C  33 C0			 xor ax, ax
-    119	018E  33 D2			 xor dx, dx
-    120
-    121	0190				     __next:
-    122	0190  80 3C 0D			     cmp byte ptr [si],	13d
-    123	0193  74 1D			     je	__break
+    115
+    116	01A5  D1 EA			 shr dx, 1	 ;weight/=2
+    117	01A7  D1 E2			 shl dx, 1
+    118
+    119	01A9  03 DA			 add bx, dx
+    120	01AB  2B D8			 sub bx, ax	 ;set bx right x coord to write	text
+    121
+    122	01AD  B8 B800			 mov ax, 0b800h
+    123	01B0  8E C0			 mov es, ax	 ;es ->	videomem
     124
-    125	0195  D1 E0 D1 E0 D1 E0	D1+	     shl ax, 4		 ;ax = ax*16
-    126	      E0
-    127	019D  8A 14				     mov dl, [si]	 ;put in dl next simbol
-    128	019F  80 EA 30				     sub dl, '0'		     ;convert simbol to	number
-    129
-    130	01A2  80 FA 09			     cmp dl, 9
-    131	01A5  7C 03			     jl	 __les10	 ;if [si] - letter
-    132	01A7  80 EA 07				 sub dl, 7	 ;dl -=	7
-    133	01AA				 __les10:
-    134
-    135	01AA  03 C2				     add ax, dx			 ;ax +=	dh
-    136
-    137	01AC  46				     inc si
-    138	01AD  80 3C 20			     cmp byte ptr [si],	' '
-    139	01B0  75 DE				     jne __next		 ;while(*si != ' ')
-    140	01B2				 __break:
-    141
-    142	01B2  C3			 ret
-    143	01B3					     endp
-    144
-    145				     ;--------------------------------
-    146				     ;EXPECTS:	 es->videomemory
-    147				     ;INPUTS:	 bp - offset in	vmem
-    148				     ;			 dh - height of	frame
-    149				     ;			 dl - weight of	frame
-    150				     ;			 ah - color atr
-    151				     ;		 si - pointer to array with 9 symbols to draw frame in format:
-    152				     ;		 0:[left  up   corner]
-    153				     ;		 1:[up	       border]
-    154				     ;		 2:[right up   corner]
-    155				     ;		 3:[left       border]
-    156				     ;		 4:[simbol to fill frame]
-    157				     ;		 5:[right      border]
-    158				     ;		 6:[left  down corner]
-    159				     ;		 7:[bottom     border]
-    160				     ;		 8:[right down corner]
-    161				     ;
-    162				     ;OUTPUTS:	 None
-    163				     ;DESTROYS:	 bx,
-    164				     ;--------------------------------
-    165	01B3			     DrawFrame	 proc
-    166	01B3  80 EA 02			 sub dl, 2	     ;now we don`t consider the	1-st and the last symbol, because them we   +
-    167				     will put without loops
-    168	01B6  80 EE 02			 sub dh, 2	     ;the same reason
-    169
-    170	01B9  8B FD			 mov di, bp
-    171	01BB  8A 04			 mov al, [si + 0]
-Turbo Assembler	 Version 4.1	    02/20/23 01:16:28	    Page 4
+    125	01B2  E8 0099			 call OutputStr
+    126	01B5  C3			 ret
+    127				     ;-------------------------------------------
+    128				     ;GetDecimalNumberFromMemory
+    129				     ;-------------------------------------------
+    130				     ;EXPECTS:	 None
+    131				     ;INPUTS:	     si	- pointer to place in memory which from	number will be taken
+    132				     ;
+    133				     ;OUTPUTS:	     ax	- number
+    134				     ;		 si - pointer to byte after end	of number
+    135				     ;
+    136				     ;DESTROYS:	     dx, di
+    137				     ;
+    138				     ;-------------------------------------------
+    139	01B6			     GetDecNumFromMem	proc
+    140	01B6  33 C0			 xor ax, ax
+    141	01B8  33 D2			 xor dx, dx
+    142	01BA  BF 000A			     mov di, 10d
+    143
+    144	01BD				     __next:
+    145	01BD  80 3C 0D			     cmp byte ptr [si],	13d
+    146	01C0  74 0F			     je	__break
+    147
+    148	01C2  F7 E7			     mul di		 ;ax = ax*10
+    149	01C4  8A 14				     mov dl, [si]	 ;put in dl next simbol
+    150	01C6  80 EA 30				     sub dl, '0'		     ;convert simbol to	number
+    151
+    152	01C9  03 C2				     add ax, dx			 ;ax +=	dh
+    153
+    154	01CB  46				     inc si
+    155	01CC  80 3C 20			     cmp byte ptr [si],	' '
+    156	01CF  75 EC				     jne __next		 ;while(*si != ' ')
+    157	01D1				 __break:
+    158
+    159	01D1  C3			 ret
+    160	01D2					     endp
+    161
+    162				     ;-------------------------------------------
+    163				     ;GetHexNumberFromMemory
+    164				     ;-------------------------------------------
+    165				     ;EXPECTS:	 None
+    166				     ;INPUTS:	     si	- pointer to place in memory which from	number will be taken
+    167				     ;
+    168				     ;OUTPUTS:	     ax	- number
+    169				     ;		 si - pointer to byte after end	of number
+    170				     ;
+    171				     ;DESTROYS:	     dx
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 4
 frame2.asm
 
 
 
-    172	01BD  8A 5C 01			 mov bl, [si + 1]
-    173	01C0  8A 7C 02			 mov bh, [si + 2]
-    174	01C3  33 C9			 xor cx, cx	     ;
-    175	01C5  8A CA			 mov cl, dl	     ;cx = dl
-    176	01C7  E8 0034			 call PutFrameLine   ;draw the first line
+    172				     ;
+    173				     ;-------------------------------------------
+    174	01D2			     GetHexNumFromMem	proc
+    175	01D2  33 C0			 xor ax, ax
+    176	01D4  33 D2			 xor dx, dx
     177
-    178	01CA  81 C5 00A0		 add bp, 160d	     ;go to the	next line
-    179
-    180	01CE  8A 5C 04			 mov bl, [si + 4]
-    181	01D1  8A 7C 05			 mov bh, [si + 5]
-    182	01D4				 __next:
-    183	01D4  8B FD			     mov di, bp
-    184	01D6  8A 44 03			     mov al, [si + 3]	 ;rewrite in the loop because in PutFrameLine al destroys
-    185	01D9  33 C9			     xor cx, cx		 ;
-    186	01DB  8A CA			     mov cl, dl		 ;cx = dl
-    187	01DD  E8 001E			     call PutFrameLine	 ;draw all middle lines
-    188	01E0  81 C5 00A0		     add bp, 160d	 ;go to	the next line
-    189
-    190	01E4  FE CE			     dec dh		 ;dh--
-    191	01E6  80 FE 00			     cmp dh, 0
-    192	01E9  75 E9			     jne __next		 ;while(dh!=0)
+    178	01D6				     __next:
+    179	01D6  80 3C 0D			     cmp byte ptr [si],	13d
+    180	01D9  74 1D			     je	__break
+    181
+    182	01DB  D1 E0 D1 E0 D1 E0	D1+	     shl ax, 4		 ;ax = ax*16
+    183	      E0
+    184	01E3  8A 14				     mov dl, [si]	 ;put in dl next simbol
+    185	01E5  80 EA 30				     sub dl, '0'		     ;convert simbol to	number
+    186
+    187	01E8  80 FA 09			     cmp dl, 9
+    188	01EB  7C 03			     jl	 __les10	 ;if [si] - letter
+    189	01ED  80 EA 07				 sub dl, 7	 ;dl -=	7
+    190	01F0				 __les10:
+    191
+    192	01F0  03 C2				     add ax, dx			 ;ax +=	dh
     193
-    194	01EB  8B FD			 mov di, bp
-    195	01ED  8A 44 06			 mov al, [si + 6]
-    196	01F0  8A 5C 07			 mov bl, [si + 7]
-    197	01F3  8A 7C 08			 mov bh, [si + 8]
-    198	01F6  33 C9			 xor cx, cx	     ;
-    199	01F8  8A CA			 mov cl, dl	     ;cx = dl
-    200	01FA  E8 0001			 call PutFrameLine   ;draw the first line
+    194	01F2  46				     inc si
+    195	01F3  80 3C 20			     cmp byte ptr [si],	' '
+    196	01F6  75 DE				     jne __next		 ;while(*si != ' ')
+    197	01F8				 __break:
+    198
+    199	01F8  C3			 ret
+    200	01F9					     endp
     201
-    202	01FD  C3			 ret
-    203	01FE					 endp
-    204
-    205				     ;--------------------------------
-    206				     ;PutFrameLine
-    207				     ;--------------------------------
-    208				     ;EXPECTS:	 es -> videomemory segment
-    209				     ;INPUTS:	 di - offset in	videomemory
-    210				     ;		 ah - color atr	of the symbols
-    211				     ;		 al - ASCII code of the	1-st symbol
-    212				     ;		 bl - ASCII code of cx middle symbols
-    213				     ;		 bh - ASCII code of the	last symbol
-    214				     ;		 cx - numbers of middle	symbols
-    215				     ;
-    216				     ;OUTPUTS:	 None
-    217				     ;DESTROYS:	 di, al, cx
-    218				     ;--------------------------------
-    219	01FE			     PutFrameLine    proc
-    220	01FE  FC			 cld
-    221	01FF  AB			 stosw	     ;put the fisrt symbol
-    222
-    223	0200  8A C3			 mov al, bl  ;change putting simdol to middle symbol
-    224	0202  F3> AB			 rep stosw   ;put all middle symbols
-    225
-    226	0204  8A C7			 mov al, bh  ;change putting simdol to the last	symbol
-    227	0206  AB			 stosw
-    228
-Turbo Assembler	 Version 4.1	    02/20/23 01:16:28	    Page 5
+    202				     ;--------------------------------
+    203				     ;EXPECTS:	 es->videomemory
+    204				     ;INPUTS:	 bp - offset in	vmem
+    205				     ;			 dh - height of	frame
+    206				     ;			 dl - weight of	frame
+    207				     ;			 ah - color atr
+    208				     ;		 si - pointer to array with 9 symbols to draw frame in format:
+    209				     ;		 0:[left  up   corner]
+    210				     ;		 1:[up	       border]
+    211				     ;		 2:[right up   corner]
+    212				     ;		 3:[left       border]
+    213				     ;		 4:[simbol to fill frame]
+    214				     ;		 5:[right      border]
+    215				     ;		 6:[left  down corner]
+    216				     ;		 7:[bottom     border]
+    217				     ;		 8:[right down corner]
+    218				     ;
+    219				     ;OUTPUTS:	 None
+    220				     ;DESTROYS:	 bx, cx, di, bp, al, dx
+    221				     ;--------------------------------
+    222	01F9			     DrawFrame	 proc
+    223	01F9  80 EA 02			 sub dl, 2	     ;now we don`t consider the	1-st and the last symbol, because them we   +
+    224				     will put without loops
+    225	01FC  80 EE 02			 sub dh, 2	     ;the same reason
+    226
+    227	01FF  8B FD			 mov di, bp
+    228	0201  8A 04			 mov al, [si + 0]
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 5
 frame2.asm
 
 
 
-    229	0207  C3			 ret
-    230	0208					     endp
-    231				     ;--------------------------------
-    232
-    233	0208			     .data
-    234				     ;		 0:[left  up   corner]
-    235				     ;		 1:[up	       border]
-    236				     ;		 2:[right up   corner]
-    237				     ;		 3:[left       border]
-    238				     ;		 4:[simbol to fill frame]
-    239				     ;		 5:[right      border]
-    240				     ;		 6:[left  down corner]
-    241				     ;		 7:[bottom     border]
-    242				     ;		 8:[right down corner]
-    243
-    244	0000  DA C4 BF 7C 20 7C	C0+  single_frame db 0dah, 0c4h, 0bfh, '|',  ' ', '|',	0c0h, '_',  0d9h
-    245	      5F D9
+    229	0203  8A 5C 01			 mov bl, [si + 1]
+    230	0206  8A 7C 02			 mov bh, [si + 2]
+    231	0209  33 C9			 xor cx, cx	     ;
+    232	020B  8A CA			 mov cl, dl	     ;cx = dl
+    233	020D  E8 0034			 call PutFrameLine   ;draw the first line
+    234
+    235	0210  81 C5 00A0		 add bp, 160d	     ;go to the	next line
+    236
+    237	0214  8A 5C 04			 mov bl, [si + 4]
+    238	0217  8A 7C 05			 mov bh, [si + 5]
+    239	021A				 __next:
+    240	021A  8B FD			     mov di, bp
+    241	021C  8A 44 03			     mov al, [si + 3]	 ;rewrite in the loop because in PutFrameLine al destroys
+    242	021F  33 C9			     xor cx, cx		 ;
+    243	0221  8A CA			     mov cl, dl		 ;cx = dl
+    244	0223  E8 001E			     call PutFrameLine	 ;draw all middle lines
+    245	0226  81 C5 00A0		     add bp, 160d	 ;go to	the next line
     246
-    247	0009  C9 CD BB BA 20 BA	C8+  double_frame db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah,	0c8h, 0cdh, 0bch
-    248	      CD BC
-    249
-    250				     end Start
-Turbo Assembler	 Version 4.1	    02/20/23 01:16:28	    Page 6
+    247	022A  FE CE			     dec dh		 ;dh--
+    248	022C  80 FE 00			     cmp dh, 0
+    249	022F  75 E9			     jne __next		 ;while(dh!=0)
+    250
+    251	0231  8B FD			 mov di, bp
+    252	0233  8A 44 06			 mov al, [si + 6]
+    253	0236  8A 5C 07			 mov bl, [si + 7]
+    254	0239  8A 7C 08			 mov bh, [si + 8]
+    255	023C  33 C9			 xor cx, cx	     ;
+    256	023E  8A CA			 mov cl, dl	     ;cx = dl
+    257	0240  E8 0001			 call PutFrameLine   ;draw the first line
+    258
+    259	0243  C3			 ret
+    260	0244					 endp
+    261
+    262				     ;--------------------------------
+    263				     ;PutFrameLine
+    264				     ;--------------------------------
+    265				     ;EXPECTS:	 es -> videomemory segment
+    266				     ;INPUTS:	 di - offset in	videomemory
+    267				     ;		 ah - color atr	of the symbols
+    268				     ;		 al - ASCII code of the	1-st symbol
+    269				     ;		 bl - ASCII code of cx middle symbols
+    270				     ;		 bh - ASCII code of the	last symbol
+    271				     ;		 cx - numbers of middle	symbols
+    272				     ;
+    273				     ;OUTPUTS:	 None
+    274				     ;DESTROYS:	 di, al, cx
+    275				     ;--------------------------------
+    276	0244			     PutFrameLine    proc
+    277	0244  FC			 cld
+    278	0245  AB			 stosw	     ;put the fisrt symbol
+    279
+    280	0246  8A C3			 mov al, bl  ;change putting simdol to middle symbol
+    281	0248  F3> AB			 rep stosw   ;put all middle symbols
+    282
+    283	024A  8A C7			 mov al, bh  ;change putting simdol to the last	symbol
+    284	024C  AB			 stosw
+    285
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 6
+frame2.asm
+
+
+
+    286	024D  C3			 ret
+    287	024E					     endp
+    288				     ;--------------------------------
+    289
+    290	024E			     .data
+    291				     ;		 0:[left  up   corner]
+    292				     ;		 1:[up	       border]
+    293				     ;		 2:[right up   corner]
+    294				     ;		 3:[left       border]
+    295				     ;		 4:[simbol to fill frame]
+    296				     ;		 5:[right      border]
+    297				     ;		 6:[left  down corner]
+    298				     ;		 7:[bottom     border]
+    299				     ;		 8:[right down corner]
+    300
+    301	0000  DA C4 BF 7C 20 7C	C0+  single_frame db 0dah, 0c4h, 0bfh, '|',  ' ', '|',	0c0h, '_',  0d9h
+    302	      5F D9
+    303
+    304	0009  C9 CD BB BA 20 BA	C8+  double_frame db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah,	0c8h, 0cdh, 0bch
+    305	      CD BC
+    306
+    307	0012			     .code
+    308				     ;------------------------------------------------
+    309				     ;Put text form var	in vmem
+    310				     ;------------------------------------------------
+    311				     ;EXPECTS: es->videomem
+    312				     ;
+    313				     ;INPUTS: bx - offset
+    314				     ;		      ch - color atribut
+    315				     ;		      si - pointer to variable with text
+    316				     ;		      bp - length of string in var
+    317				     ;
+    318				     ;OUTPUTS: None
+    319				     ;
+    320				     ;Destroys:	si, bx,	bp, cl
+    321				     ;------------------------------------------------
+    322
+    323	024E			     OutputStr	     proc
+    324
+    325	024E  03 EE			     add bp, si
+    326	0250				     __next:									     ;
+    327	0250  8A 0C				     mov cl, [si]						     ;
+    328	0252  26: 89 0F				     mov word ptr es:[bx], cx				     ;
+    329	0255  83 C3 02				     add bx, 2								     ;
+    330	0258  46				     inc si								     ;
+    331
+    332	0259  3B F5				     cmp si, bp							     ;
+    333	025B  75 F3				     jne __next								     ;
+    334
+    335	025D  C3			     ret
+    336	025E				     endp
+    337				     ;------------------------------------------------
+    338
+    339				     include STRFUNC.ASM
+1   340	025E			     .code
+1   341				     locals __
+1   342
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 7
+frame2.asm
+
+
+
+1   343				     ;-------------------------------------
+1   344				     ;StrLen
+1   345				     ;	 count length of str excluding '\0'
+1   346				     ;------------------------------------
+1   347				     ;EXPECTS:	 None
+1   348				     ;INPUTS:	 es - segment in which string located
+1   349				     ;		 di - offset  start of string
+1   350				     ;
+1   351				     ;OUTPUT:	 ax - length of	string
+1   352				     ;
+1   353				     ;DESTROYS:	 si, ax, di
+1   354				     ;-------------------------------------
+1   355	025E			     StrLen  proc
+1   356	025E  FC			 cld		 ;move forward along the string
+1   357	025F  B8 0000			 mov ax, 0d	 ;ax = '\0'
+1   358	0262  8B F7			 mov si, di	 ;save old value of di
+1   359
+1   360	0264  4F			 dec di
+1   361	0265				 __next:
+1   362	0265  47			     inc di
+1   363	0266  26: 38 05			     cmp byte ptr es:[di], al
+1   364	0269  75 FA			     jne __Next
+1   365
+1   366	026B  8B C7			 mov ax, di
+1   367	026D  2B C6			 sub ax, si	 ;ax = di - si
+1   368
+1   369	026F  C3			 ret
+1   370	0270				     endp
+1   371
+1   372				     ;-------------------------------------
+1   373				     ;MemCpy
+1   374				     ;-------------------------------------
+1   375				     ;EXPECTS:	 None
+1   376				     ;INPUTS:	 es - segment in which source located
+1   377				     ;		 si - offset of	source
+1   378				     ;		 ds - segment in which distination located
+1   379				     ;		 di - offset of	distination
+1   380				     ;		 cx - number of	bytes
+1   381				     ;
+1   382				     ;OUTPUTS:	 None
+1   383				     ;
+1   384				     ;DESTROYS:	 df, si, di
+1   385				     ;-------------------------------------
+1   386	0270			     MemCpy  proc
+1   387	0270  FC			 cld
+1   388	0271  F3> A4			 rep movsb
+1   389	0273  C3			 ret
+1   390	0274				     endp
+1   391
+1   392				     ;-------------------------------------
+1   393				     ;StrCpy
+1   394				     ;-------------------------------------
+1   395				     ;
+1   396				     ;INPUTS:	 es - segment in which source string located
+1   397				     ;		 si - offset of	source string
+1   398				     ;		 ds - segment in which distination string located
+1   399				     ;		 di - segment of distination string
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 8
+frame2.asm
+
+
+
+1   400				     ;Destroys:	 si, di, cx
+1   401				     ;-------------------------------------
+1   402	0274			     StrCpy  proc
+1   403	0274  33 C9			 xor cx, cx
+1   404	0276  FC			 cld
+1   405	0277				 __next:
+1   406	0277  A4			     movsb
+1   407	0278  8A 0C			     mov cl, ds:[si]
+1   408	027A  83 F9 00			     cmp cx, 0
+1   409	027D  75 F8			 jne __next
+1   410
+1   411	027F  C3			 ret
+1   412	0280				     endp
+1   413
+1   414
+1   415				     ;-------------------------------------
+1   416				     ;MemSet
+1   417				     ;-------------------------------------
+1   418				     ;EXPECTS:	 None
+1   419				     ;INPUTS:	 al - value to fill
+1   420				     ;		 cx - number bytes to fill
+1   421				     ;		 es - segment in which distination located
+1   422				     ;		 di - offset of	distination
+1   423				     ;OUTPUT:	 None
+1   424				     ;DESTROY:	 cx, di
+1   425				     ;
+1   426				     ;-------------------------------------
+1   427	0280			     MemSet  proc
+1   428	0280  FC			 cld
+1   429	0281  F3> AA			 rep stosb
+1   430	0283  C3			 ret
+1   431	0284				     endp
+1   432
+1   433				     ;-------------------------------------
+1   434				     ;MemCmp
+1   435				     ;-------------------------------------
+1   436				     ;EXPECTS:	 None
+1   437				     ;INPUTS:	 cx - number bytes to compare
+1   438				     ;		 ds - segment in which 1-st object located
+1   439				     ;		 si - offset for 1-st segment
+1   440				     ;		 es - segment in which 2-st object located
+1   441				     ;		 di - offset for 2-st segment
+1   442				     ;OUTPUT:	 al:  <0 if the	first object is	less
+1   443				     ;		      0	if they	are the	same
+1   444				     ;		      >0 if the	first object is	bigger
+1   445				     ;DESTROY:	 cx, di, si
+1   446				     ;
+1   447				     ;-------------------------------------
+1   448	0284			     MemCmp  proc
+1   449	0284  FC			 cld
+1   450	0285  F3> A6			 repe cmpsb
+1   451
+1   452	0287  4E			 dec si		 ;
+1   453	0288  4F			 dec di		 ;put pointers to first	not equal byte
+1   454
+1   455	0289  8A 04			 mov al, ds:[si]
+1   456	028B  26: 2A 05			 sub al, es:[di] ;return *si - *di
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 9
+frame2.asm
+
+
+
+1   457	028E  C3			 ret
+1   458	028F				     endp
+1   459
+1   460				     ;-------------------------------------
+1   461				     ;StrCmp
+1   462				     ;-------------------------------------
+1   463				     ;EXPECTS:	 None
+1   464				     ;INPUTS:	 ds - segment in which 1-st string located
+1   465				     ;		 si - offset for 1-st segment
+1   466				     ;		 es - segment in which 2-st string located
+1   467				     ;		 di - offset for 2-st segment
+1   468				     ;OUTPUT:	 al:  <0 if the	first object is	less
+1   469				     ;		      0	if they	are the	same
+1   470				     ;		      >0 if the	first object is	bigger
+1   471				     ;DESTROY:	 cx, di, si
+1   472				     ;
+1   473				     ;-------------------------------------
+1   474	028F			     StrCmp	 proc
+1   475	028F  FC			 cld
+1   476
+1   477	0290				 __Next:
+1   478	0290  8A 04			     mov al, ds:[si]
+1   479	0292  3C 00			     cmp al, 0
+1   480	0294  74 05			     je	__break
+1   481
+1   482	0296  A6			     cmpsb
+1   483	0297  75 02			     jne __break
+1   484	0299  EB F5			     jmp __Next
+1   485
+1   486	029B			     __break:
+1   487	029B  4E			 dec si		 ;
+1   488	029C  4F			 dec di		 ;put pointers to first	not equal byte
+1   489
+1   490	029D  8A 04			 mov al, ds:[si]
+1   491	029F  26: 2A 05			 sub al, es:[di] ;return *si - *di
+1   492	02A2  C3			 ret
+1   493	02A3					 endp
+    494
+    495				     end Start
+Turbo Assembler	 Version 4.1	    02/20/23 04:37:25	    Page 10
 Symbol Table
 
 
@@ -283,13 +548,13 @@ Symbol Name			  Type	 Value
 
 ??DATE				  Text	 "02/20/23"
 ??FILENAME			  Text	 "frame2  "
-??TIME				  Text	 "01:16:28"
+??TIME				  Text	 "04:37:24"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @CODE				  Text	 DGROUP
 @CODESIZE			  Text	 0
 @CPU				  Text	 0101H
-@CURSEG				  Text	 _DATA
+@CURSEG				  Text	 _TEXT
 @DATA				  Text	 DGROUP
 @DATASIZE			  Text	 0
 @FILENAME			  Text	 FRAME2
@@ -298,27 +563,40 @@ Symbol Name			  Type	 Value
 @STACK				  Text	 DGROUP
 @WORDSIZE			  Text	 2
 DOUBLE_FRAME			  Byte	 DGROUP:0009
-DRAWFRAME			  Near	 DGROUP:01B3
+DRAWFRAME			  Near	 DGROUP:01F9
 FST_TYPE			  Near	 DGROUP:0128
-GETDECNUMFROMMEM		  Near	 DGROUP:0170
-GETHEXNUMFROMMEM		  Near	 DGROUP:018C
-PUTFRAMELINE			  Near	 DGROUP:01FE
+GETDECNUMFROMMEM		  Near	 DGROUP:01B6
+GETHEXNUMFROMMEM		  Near	 DGROUP:01D2
+MEMCMP				  Near	 DGROUP:0284
+MEMCPY				  Near	 DGROUP:0270
+MEMSET				  Near	 DGROUP:0280
+OUTPUTSTR			  Near	 DGROUP:024E
+PUTFRAMELINE			  Near	 DGROUP:0244
 SINGLE_FRAME			  Byte	 DGROUP:0000
 SKIP				  Near	 DGROUP:0134
 SND_TYPE			  Near	 DGROUP:012E
 START				  Near	 DGROUP:0100
+STRCMP				  Near	 DGROUP:028F
+STRCPY				  Near	 DGROUP:0274
+STRLEN				  Near	 DGROUP:025E
 USER_TYPE			  Near	 DGROUP:0120
-__BREAK				  Near	 DGROUP:018B
-__BREAK				  Near	 DGROUP:01B2
-__LES10				  Near	 DGROUP:01AA
+__BREAK				  Near	 DGROUP:01D1
+__BREAK				  Near	 DGROUP:01F8
+__BREAK				  Near	 DGROUP:029B
+__LES10				  Near	 DGROUP:01F0
 __NEXT				  Near	 DGROUP:010B
-__NEXT				  Near	 DGROUP:0177
-__NEXT				  Near	 DGROUP:0190
-__NEXT				  Near	 DGROUP:01D4
+__NEXT				  Near	 DGROUP:01BD
+__NEXT				  Near	 DGROUP:01D6
+__NEXT				  Near	 DGROUP:021A
+__NEXT				  Near	 DGROUP:0250
+__NEXT				  Near	 DGROUP:0265
+__NEXT				  Near	 DGROUP:0277
+__NEXT				  Near	 DGROUP:0290
+__SKIP_TEXT			  Near	 DGROUP:0137
 
 Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
   _DATA				  16  0012 Word	  Public  DATA
-  _TEXT				  16  0208 Word	  Public  CODE
+  _TEXT				  16  02A3 Word	  Public  CODE
 
