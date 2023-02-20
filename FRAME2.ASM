@@ -4,9 +4,31 @@ org 100h
 
 locals __
 
+;Cml arguments format:
+;   y    
+;   x             - coord of left up corner of the frame
+;   weight
+;   height        - size of the frame
+;   frame type:   - type of the border
+;               1 - single frame 
+;               2 - double frame
+;               3 - user type
+;   symbols to frame border(only for user frame type):
+;               0:[left  up   corner]
+;               1:[up         border]
+;               2:[right up   corner]
+;               3:[left       border]
+;               4:[symbol to fill frame]
+;               5:[right      border]
+;               6:[left  down corner]
+;               7:[bottom     border]
+;               8:[right down corner] 
+;   text to output in the center of the frame
+;   color atribute of border and text
+
 Start:
-    mov ax, 0b800h
-    mov es, ax
+    mov ax, 0b800h          ;
+    mov es, ax              ;es -> videomem
     mov si, 82h             ;pointer to cml arguments
 
                                 ;<----------------------|
@@ -58,36 +80,36 @@ skip:
     pop ax          ;dl - weight of frame
     add dx, ax
 
-    pop bp          ;put x in bp
-
-    pop ax          ;put y in ax
-
-    push dx         ;<------------|
-    push di         ;<--|         |
-                    ;   |         |
-    mov di, 160d    ;   |save di  |
-    mul di          ;   |         |save dx
-                    ;   |         |
-    pop di          ;<--|         |
-    pop dx          ;<------------|
-
-    add bp, ax      ;make from x and y arguments memory offset in bp
+    pop bp          ;put x in bp                                     <----------|
+                    ;                                                           |
+    pop ax          ;put y in ax                                                |
+                    ;                                                           |
+    push dx         ;<------------|                                             |
+    push di         ;<--|         |                                             |
+                    ;   |         |                                             |
+    mov di, 160d    ;   |save di  |                                             |
+    mul di          ;   |         |save dx                                      | calculation offset from x and y
+                    ;   |         |                                             |
+    pop di          ;<--|         |                                             |
+    pop dx          ;<------------|                                             |
+                    ;                                                           |
+    add bp, ax      ;make from x and y arguments memory offset in bp <----------|
 
     mov ax, cx      ;put color atribute to ax
-    shl ax, 8
+    shl ax, 8       ;put color atr in ah
     
-    push bp
-    push di
-    push dx
+    push bp         ;save offset
+    push di         ;save pointer to text
+    push dx         ;save size of the frame
     call DrawFrame
 
     pop dx          ;size of frame
     pop di          ;pointer to text
 
     push cs
-    pop es          ;set es to this segment
-    push ax
-    push di
+    pop es          ;set es to the current segment
+    push ax         ;save color atr
+    push di         ;save pointer to text
     call StrLen     ;in ax - length of string
     pop si          ;pointer to text
 
@@ -97,23 +119,23 @@ skip:
 
     mov bp, ax      ;save str length to bp
 
-    shr dh, 1       ;height/=2
-    mov ax, 160d    ;
-    mul dh
+    shr dh, 1       ;height/=2                          <--|
+    mov ax, 160d    ;                                      |
+    mul dh          ;                                      |calculation of the x coord for output text           
+                    ;                                      |
+    add bx, ax      ;set bx right y coord to write text <--|
 
-    add bx, ax      ;set bx right y coord to write text
-
-    xor dh, dh      ;dx = dl
-
-    mov ax, bp      ;ax = length
-    shr ax, 1       ;ax/=2
-    shl ax, 1
-
-    shr dx, 1       ;weight/=2
-    shl dx, 1
-
-    add bx, dx
-    sub bx, ax      ;set bx right x coord to write text
+    xor dh, dh      ;dx = dl                                              <---|
+                    ;                                                         |
+    mov ax, bp      ;ax = length                                              |
+    shr ax, 1       ;ax/=2                                                    |
+    shl ax, 1       ;in vmem every symbol is 2 bytes(color atr and symbol)    |
+                    ;                                                         |
+    shr dx, 1       ;weight/=2                                                |calculation of the y coord for output text
+    shl dx, 1       ;in vmem every symbol is 2 bytes(color atr and symbol)    |
+                    ;                                                         |
+    add bx, dx      ;                                                         |
+    sub bx, ax      ;set bx right x coord to write text                 <-----|
 
     mov ax, 0b800h
     mov es, ax      ;es -> videomem
@@ -138,12 +160,12 @@ GetDecNumFromMem   proc
 	mov di, 10d
 	
 	__next:
-        cmp byte ptr [si], 13d
-        je __break
+        cmp byte ptr [si], 13d  ;cml argument end with 13d symbol
+        je __break              ;check for end arguments
 
         mul di              ;ax = ax*10
-		mov dl, [si]        ;put in dl next simbol
-		sub dl, '0'			;convert simbol to number
+		mov dl, [si]        ;put in dl next symbol
+		sub dl, '0'			;convert symbol to number
 		
 		add ax, dx		    ;ax += dh
 		
@@ -176,15 +198,19 @@ GetHexNumFromMem   proc
         je __break
 
         shl ax, 4           ;ax = ax*16
-		mov dl, [si]        ;put in dl next simbol
-		sub dl, '0'			;convert simbol to number
+		mov dl, [si]        ;put in dl next symbol
+        
 
-        cmp dl, 9
-        jl  __les10         ;if [si] - letter
-            sub dl, 7       ;dl -= 7
+        cmp dl, '9'
+        jl  __les10             ;if [si] - letter
+            and dl, not 20h     ;put zero to bit to make letter from lowercase to uppercase
+            sub dl, 'A'-('9' + 1)
     __les10:
 
-		add ax, dx		    ;ax += dh
+		sub dl, '0'			;convert symbol to number
+
+
+		add ax, dx
 		
 		inc si
         cmp byte ptr [si], ' '
@@ -205,7 +231,7 @@ GetHexNumFromMem   proc
 ;           1:[up         border]
 ;           2:[right up   corner]
 ;           3:[left       border]
-;           4:[simbol to fill frame]
+;           4:[symbol to fill frame]
 ;           5:[right      border]
 ;           6:[left  down corner]
 ;           7:[bottom     border]
@@ -257,6 +283,7 @@ DrawFrame   proc
 ;PutFrameLine
 ;--------------------------------
 ;EXPECTS:   es -> videomemory segment
+;           cld
 ;INPUTS:    di - offset in videomemory
 ;           ah - color atr of the symbols
 ;           al - ASCII code of the 1-st symbol
@@ -268,7 +295,7 @@ DrawFrame   proc
 ;DESTROYS:  di, al, cx
 ;--------------------------------
 PutFrameLine    proc
-    cld
+    cld         ;ToDo remove
     stosw       ;put the fisrt symbol
 
     mov al, bl  ;change putting simdol to middle symbol
@@ -286,13 +313,13 @@ PutFrameLine    proc
 ;           1:[up         border]
 ;           2:[right up   corner]
 ;           3:[left       border]
-;           4:[simbol to fill frame]
+;           4:[symbol to fill frame]
 ;           5:[right      border]
 ;           6:[left  down corner]
 ;           7:[bottom     border]
 ;           8:[right down corner] 
 
-single_frame db 0dah, 0c4h, 0bfh, '|',  ' ', '|',  0c0h, '_',  0d9h
+single_frame db 0dah, 0c4h, 0bfh, '|',  ' ', '|',  0c0h, '-',  0d9h
 
 double_frame db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h, 0cdh, 0bch
 
@@ -311,7 +338,6 @@ double_frame db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h, 0cdh, 0bch
 ;
 ;Destroys: si, bx, bp, cl
 ;------------------------------------------------
-
 OutputStr	proc
 
 	add bp, si
@@ -326,7 +352,6 @@ OutputStr	proc
 
 	ret
 	endp
-;------------------------------------------------
 
 include STRFUNC.ASM
 

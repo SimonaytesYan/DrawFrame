@@ -11,7 +11,7 @@ locals __
 ;
 ;OUTPUT:    ax - length of string
 ;
-;DESTROYS:  si, ax, di
+;DESTROYS:  si, di
 ;-------------------------------------
 StrLen  proc
     cld             ;move forward along the string    
@@ -31,9 +31,34 @@ StrLen  proc
         endp
 
 ;-------------------------------------
+;StrLen_v2
+;   count length of str excluding '\0'
+;------------------------------------
+;EXPECTS:   None
+;INPUTS:    es - segment in which string located
+;           di - offset  start of string
+;
+;OUTPUT:    ax - length of string
+;
+;DESTROYS:  df, si
+;-------------------------------------
+StrLen_v2  proc
+    cld             ;move forward along the string    
+    mov ax, 0d      ;ax = '\0'
+    mov si, di      ;save old value of di
+;ToDo set cx
+    repne scasb     ;while(es:[di] != ax) di++;
+    mov ax, di
+    sub ax, si      ;ax = di - si
+    dec ax
+
+    ret
+        endp
+
+;-------------------------------------
 ;MemCpy
 ;-------------------------------------
-;EXPECTS:   None
+;EXPECTS:   cld
 ;INPUTS:    es - segment in which source located
 ;           si - offset of source
 ;           ds - segment in which distination located
@@ -45,7 +70,8 @@ StrLen  proc
 ;DESTROYS:  df, si, di
 ;-------------------------------------
 MemCpy  proc
-    cld
+    ;cld
+    ;ToDo use double words
     rep movsb
     ret
         endp
@@ -94,7 +120,7 @@ MemSet  proc
 ;-------------------------------------
 ;MemCmp
 ;-------------------------------------
-;EXPECTS:   None
+;EXPECTS:   cld
 ;INPUTS:    cx - number bytes to compare
 ;           ds - segment in which 1-st object located
 ;           si - offset for 1-st segment
@@ -106,8 +132,7 @@ MemSet  proc
 ;DESTROY:   cx, di, si
 ;
 ;-------------------------------------
-MemCmp  proc 
-    cld
+MemCmp  proc
     repe cmpsb
 
     dec si          ;
@@ -134,6 +159,7 @@ MemCmp  proc
 ;-------------------------------------
 StrCmp      proc
     cld
+    ;ToDo compare with strlen and this implementation
 
     __Next:
         mov al, ds:[si]
